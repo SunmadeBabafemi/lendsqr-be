@@ -18,30 +18,30 @@ https://documenter.getpostman.com/view/15148492/2sAY5191Q2
 
 ## Installation
 
-bash
+```bash
 $ npm install
+```
 
 ## Database Migration
 
-bash
+```bash
 $ npx prisma migrate dev --name init
+```
 
 ## Running the app
 
-bash
+```bash
 
 # development: watch mode
 
 $ npm run dev
-
-# production mode
-
-$ npm run start:prod
+```
 
 ## Test
 
-bash
+```bash
 
 # unit tests
 
 $ npx jest
+```
