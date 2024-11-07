@@ -21,15 +21,10 @@ import { HttpCodesEnum } from "../../common/enums/httpCodes.enum";
 import { requestProp } from "../../common/interfaces/base.interface";
 import envConfig from "../../../env.config";
 import { axiosRequestFunction } from "../../common/helpers";
+import { tableNames } from "../../common/constants";
 
 class UserService {
-	private readonly Usermodel: Knex.QueryBuilder;
-	private readonly Walletmodel: Knex.QueryBuilder;
-
-	constructor(private readonly knex: Knex) {
-		this.Usermodel = this.knex<User>("users");
-		this.Walletmodel = this.knex<Wallet>("wallets");
-	}
+	constructor(private readonly knex: Knex) {}
 
 	public async createUser(createUserDto: CreateUserDto): Promise<ResponseData> {
 		let responseData: ResponseData = {
@@ -38,7 +33,8 @@ class UserService {
 			message: "User Created Successfully, awaiting verification",
 		};
 		try {
-			const userExist = await this.Usermodel.select(["email", "phone_number"])
+			const userExist = await this.knex(tableNames.users)
+				.select(["email", "phone_number"])
 				.where("email", createUserDto.email.toLowerCase())
 				.orWhere("phone_number", createUserDto.phone_number);
 
@@ -54,20 +50,22 @@ class UserService {
 
 			const hashedPassword = await hashPassword(createUserDto.password);
 			const accessToken = createToken(user_id);
-			await this.Usermodel.insert({
-				id: user_id,
-				first_name: createUserDto.first_name.toLowerCase(),
-				last_name: createUserDto.last_name.toLowerCase(),
-				email: createUserDto.email.toLowerCase(),
-				phone_number: createUserDto.phone_number,
-				accessToken,
-				bvn: createUserDto.bvn,
-				nin: createUserDto.nin,
-				password: hashedPassword,
-				wallet_id: "user_id",
-			}).then((created) => {
-				console.log("🚀 ~USER CREATED SUCCESSFULLY:", created);
-			});
+			await this.knex(tableNames.users)
+				.insert({
+					id: user_id,
+					first_name: createUserDto.first_name.toLowerCase(),
+					last_name: createUserDto.last_name.toLowerCase(),
+					email: createUserDto.email.toLowerCase(),
+					phone_number: createUserDto.phone_number,
+					accessToken,
+					bvn: createUserDto.bvn,
+					nin: createUserDto.nin,
+					password: hashedPassword,
+					wallet_id: "user_id",
+				})
+				.then((created) => {
+					console.log("🚀 ~USER CREATED SUCCESSFULLY:", created);
+				});
 
 			const walletUser = (await this.createUserWallet(user_id)).data;
 			const user = await this.knex("users")
@@ -102,10 +100,9 @@ class UserService {
 			message: "Wallet Created Successfully, awaiting verification",
 		};
 		try {
-			const walletExist = await this.Walletmodel.select("*").where(
-				"user_id",
-				user_id
-			);
+			const walletExist = await this.knex(tableNames.wallets)
+				.select("*")
+				.where("user_id", user_id);
 
 			if (walletExist.length > 0) {
 				responseData = {
@@ -118,12 +115,14 @@ class UserService {
 			}
 			const wallet_id = uuid();
 
-			await this.Walletmodel.insert({
-				id: wallet_id,
-				user_id,
-			}).then((created) => {
-				console.log("🚀 ~Wallet CREATED SUCCESSFULLY:", created);
-			});
+			await this.knex(tableNames.wallets)
+				.insert({
+					id: wallet_id,
+					user_id,
+				})
+				.then((created) => {
+					console.log("🚀 ~Wallet CREATED SUCCESSFULLY:", created);
+				});
 
 			let updatedUser;
 			await this.knex("users")

@@ -356,6 +356,7 @@ class TransactionService {
 			code: HttpCodes.HTTP_BAD_REQUEST,
 			message: `NGN${payload.amount} transfered successfully`,
 		};
+		const trx = await this.knex.transaction();
 		try {
 			const validatePin = await this.validateTransactionPin(
 				payload.txn_pin,
@@ -364,7 +365,7 @@ class TransactionService {
 			if (validatePin.status === StatusMessages.error) {
 				return validatePin;
 			}
-			const userWallet = await this.knex(tableNames.wallets)
+			const userWallet = await trx(tableNames.wallets)
 				.where("user_id", payload.user.id)
 				.select("*")
 				.first();
@@ -374,7 +375,7 @@ class TransactionService {
 				return responseData;
 			}
 
-			const receiepientWallet = await this.knex(tableNames.wallets)
+			const receiepientWallet = await trx(tableNames.wallets)
 				.where("user_id", payload.receipient_id)
 				.select("*")
 				.first();
@@ -412,28 +413,33 @@ class TransactionService {
 				sender_id: userWallet.id,
 			};
 
-			await this.knex(tableNames.transaction_logs)
+			await trx(tableNames.transaction_logs)
 				.insert(senderTxnLog)
 				.then(async () => {
 					await this.completeWalletDebit({
 						user_id: payload.user.id,
 						amount,
+						trx,
 					});
 				});
 
-			await this.knex(tableNames.transaction_logs)
+			await trx(tableNames.transaction_logs)
 				.insert(receiverTxnLog)
 				.then(async () => {
 					await this.completeWalletTopup({
 						user_id: payload.receipient_id,
 						amount,
+						trx,
 					});
 				});
+
+			await trx.commit();
 			responseData.status = StatusMessages.success;
 			responseData.code = HttpCodesEnum.HTTP_OK;
 
 			return responseData;
 		} catch (error: any) {
+			await trx.rollback();
 			console.error("🚀 ~ TransactionService ~ error:", error);
 			responseData = {
 				status: StatusMessages.error,
@@ -444,7 +450,10 @@ class TransactionService {
 		}
 	}
 
-	public async completeWalletTopup(payload: any): Promise<ResponseData> {
+	public async completeWalletTopup(
+		payload: any,
+		trx?: Knex.Transaction
+	): Promise<ResponseData> {
 		let responseData: ResponseData = {
 			status: StatusMessages.success,
 			code: HttpCodes.HTTP_OK,
@@ -452,7 +461,7 @@ class TransactionService {
 		};
 		try {
 			const { user_id, amount } = payload;
-			const wallet = await this.knex(tableNames.wallets)
+			const wallet = await (trx || this.knex)(tableNames.wallets)
 				.where("user_id", user_id)
 				.select("*")
 				.first();
@@ -472,12 +481,14 @@ class TransactionService {
 			const current_balance = Number(wallet.current_balance);
 			const new_balance = current_balance + Number(amount);
 
-			await this.knex(tableNames.wallets).where("id", wallet.id).update({
-				current_balance: new_balance,
-				previous_balance: current_balance,
-			});
+			await (trx || this.knex)(tableNames.wallets)
+				.where("id", wallet.id)
+				.update({
+					current_balance: new_balance,
+					previous_balance: current_balance,
+				});
 
-			const toppedUpWallet = await this.knex(tableNames.wallets)
+			const toppedUpWallet = await (trx || this.knex)(tableNames.wallets)
 				.where("id", wallet.id)
 				.select("*");
 			responseData.data = toppedUpWallet;
@@ -493,7 +504,10 @@ class TransactionService {
 		}
 	}
 
-	public async completeWalletDebit(payload: any): Promise<ResponseData> {
+	public async completeWalletDebit(
+		payload: any,
+		trx?: Knex.Transaction
+	): Promise<ResponseData> {
 		let responseData: ResponseData = {
 			status: StatusMessages.success,
 			code: HttpCodes.HTTP_OK,
@@ -501,7 +515,7 @@ class TransactionService {
 		};
 		try {
 			const { user_id, amount } = payload;
-			const wallet = await this.knex(tableNames.wallets)
+			const wallet = await (trx || this.knex)(tableNames.wallets)
 				.where("user_id", user_id)
 				.select("*")
 				.first();
@@ -516,12 +530,14 @@ class TransactionService {
 			const current_balance = Number(wallet.current_balance);
 			const new_balance = current_balance - Number(amount);
 
-			await this.knex(tableNames.wallets).where("id", wallet.id).update({
-				current_balance: new_balance,
-				previous_balance: current_balance,
-			});
+			await (trx || this.knex)(tableNames.wallets)
+				.where("id", wallet.id)
+				.update({
+					current_balance: new_balance,
+					previous_balance: current_balance,
+				});
 
-			const toppedUpWallet = await this.knex(tableNames.wallets)
+			const toppedUpWallet = await (trx || this.knex)(tableNames.wallets)
 				.where("id", wallet.id)
 				.select("*");
 			responseData.data = toppedUpWallet;

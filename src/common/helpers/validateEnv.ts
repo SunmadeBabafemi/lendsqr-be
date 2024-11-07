@@ -3,7 +3,15 @@ import { cleanEnv, str, port } from "envalid";
 function validateEnv(): void {
 	cleanEnv(process.env, {
 		NODE_ENV: str({
-			choices: ["dev", "prod", "local", "", "development", "production"],
+			choices: [
+				"dev",
+				"prod",
+				"local",
+				"",
+				"development",
+				"production",
+				"test",
+			],
 		}),
 		// MONGO_URI: str(),
 		// JWT_SECRET: str(),
