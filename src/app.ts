@@ -1,4 +1,4 @@
-import express, { Application } from "express";
+import express, { Application, Request, Response } from "express";
 import compression from "compression";
 import helmet from "helmet";
 import cors from "cors";
@@ -16,6 +16,7 @@ class App {
 		this.port = port;
 		this.initializeMiddleware();
 		this.initializeControllers(controllers);
+		this.initializeDefaultRoute();
 		this.initializeErrorHandling();
 		this.initializeDB();
 	}
@@ -32,6 +33,12 @@ class App {
 	private initializeControllers(controllers: Controller[]): void {
 		controllers.forEach((controller: Controller) => {
 			this.express.use("/lendsqr/v1", controller.router);
+		});
+	}
+
+	private initializeDefaultRoute(): void {
+		this.express.get("/", (req: Request, res: Response) => {
+			res.status(200).send("Welcome to the LendSQR API!"); // You can customize this message
 		});
 	}
 
