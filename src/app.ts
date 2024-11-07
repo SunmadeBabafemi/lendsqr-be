@@ -38,7 +38,7 @@ class App {
 
 	private initializeDefaultRoute(): void {
 		this.express.get("/", (req: Request, res: Response) => {
-			res.status(200).send("Welcome to the LendSQR API!"); // You can customize this message
+			res.status(200).send("Welcome to the LendSQR API!");
 		});
 	}
 
